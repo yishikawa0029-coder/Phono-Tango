@@ -2245,7 +2245,7 @@ function saveList(){
 }
 
 /* ====== 覚えるモード（学習） ====== */
-let studyQueue = [], sIdx = 0, sRevealed = false;
+let studyQueue = [], sIdx = 0, sRevealed = false, studyTotal = 0;
 function escapeHtmlS(s){ return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 function isLearned(w){ const s=stats[w.word]; return !!(s && s.seen>0 && (s.correct/s.seen)>=0.6); }
 function startStudy(){
@@ -2258,6 +2258,7 @@ function startStudy(){
   }
   const n = countSel==="all" ? pool.length : Math.min(countSel, pool.length);
   studyQueue = shuffle(pool.slice()).slice(0, n);
+  studyTotal = studyQueue.length;
   sIdx = 0;
   $("#sDone").hidden = true;
   $("#sCard").style.display = "";
@@ -2283,18 +2284,15 @@ function renderStudyCard(){
   if(w.note){ nt.hidden=false; nt.innerHTML = '<b>解説</b> ' + escapeHtmlS(w.note); } else nt.hidden=true;
   $("#sReveal").hidden = true;
   $("#sHint").hidden = false;
-  $("#sKnow").textContent = isLearned(w) ? "✓ 覚えた済" : "✓ 覚えた";
+  $("#sKnow").textContent = "✓ 覚えた";
   $("#sCount").textContent = (sIdx+1) + " / " + studyQueue.length;
   $("#sBar").style.width = ((sIdx+1)/studyQueue.length*100) + "%";
 }
 function revealStudy(){ sRevealed=true; $("#sReveal").hidden=false; $("#sHint").hidden=true; }
 function studyAdvance(){ if(sIdx >= studyQueue.length-1){ studyDone(); } else { sIdx++; renderStudyCard(); } }
 function markStudy(known){
-  const w = studyQueue[sIdx];
-  const s = stats[w.word] || {seen:0, correct:0};
-  s.seen += 1;
-  if(known){ s.correct += 1; } else { s.lastWrong = Date.now(); }
-  stats[w.word] = s; saveStats();
+  // 覚えるモードは学習専用：苦手・正答率には一切反映しない
+  if(!known){ studyQueue.push(studyQueue[sIdx]); }   // 「まだ」はこのセッション内で後でもう一度
   studyAdvance();
 }
 function studyDone(){
@@ -2302,7 +2300,7 @@ function studyDone(){
   document.querySelector("#study .study-ctrl").style.display = "none";
   document.querySelector("#study .study-nav").style.display = "none";
   $("#sDone").hidden = false;
-  $("#sDoneSub").textContent = studyQueue.length + "語を確認しました。";
+  $("#sDoneSub").textContent = studyTotal + "語を確認しました。";
 }
 $("#sCard").addEventListener("click",e=>{ if(e.target.id==="sSpk") return; if(!sRevealed) revealStudy(); });
 $("#sSpk").addEventListener("click",e=>{ e.stopPropagation(); speak(studyQueue[sIdx].word); });
